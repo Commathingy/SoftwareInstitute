@@ -9,7 +9,7 @@ public class Main {
         boolean is_running = true;
         System.out.println(board.DisplayBoard());
 
-        //set up the Jframe (window)
+        //set up the JFrame (window)
         JFrame frame = new JFrame();
         frame.setSize(800, 600);
         frame.setTitle("Minisweeper");
