@@ -1,3 +1,4 @@
+import javax.swing.*;
 import java.util.Optional;
 import java.util.Scanner;
 
@@ -7,6 +8,18 @@ public class Main {
         MineBoard board = new MineBoard();
         boolean is_running = true;
         System.out.println(board.DisplayBoard());
+
+        //set up the Jframe (window)
+        JFrame frame = new JFrame();
+        frame.setSize(800, 600);
+        frame.setTitle("Minisweeper");
+        //TODO; is this necessary?
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setVisible(true);
+
+        //add the board to the window
+        frame.add(board);
+
 
         Scanner scanner = new Scanner(System.in);
 

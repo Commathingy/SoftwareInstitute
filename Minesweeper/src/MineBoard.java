@@ -1,12 +1,15 @@
 
+import javax.swing.*;
+import java.awt.*;
+import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.Optional;
 
-public class MineBoard {
+public class MineBoard extends JComponent {
     private ArrayList<Tile> tiles;
-    private int width;
-    private int height;
-    private int num_mines;
+    private final int width;
+    private final int height;
+    private final int num_mines;
 
 
     private void ResetTiles(){
@@ -81,5 +84,22 @@ public class MineBoard {
         this.height = height;
         tiles = new ArrayList<>(width*height);
         this.ResetTiles();
+    }
+
+
+
+    protected void paintComponent(Graphics g){
+        Graphics2D g2d = (Graphics2D) g;
+
+        //draw the top bar
+        //TODO
+
+        //draw the tiles
+        for (int j = 0; j<height; j++){
+            for (int i = 0; i<width; i++){
+                //should be present since i and j are in valid range
+                TryAccess(i, j).get().draw(g2d, i, j);
+            }
+        }
     }
 }
