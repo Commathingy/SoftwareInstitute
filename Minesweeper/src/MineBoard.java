@@ -41,16 +41,19 @@ public class MineBoard {
         return builder.toString();
     }
 
-    private Optional<Tile> TryAccess(int i, int j){
-        if (i<0 || i>width || j<0 || j>height) {
+    public Optional<Tile> TryAccess(int i, int j){
+        if (!isValidCoord(i, j)) {
             return Optional.empty();
         } else {
             return Optional.of(tiles.get(width * j + i));
         }
     }
 
+    public boolean isValidCoord(int i, int j){
+        return (i>=0 && i<width && j>=0 && j<height);
+    }
 
-    private void RevealTile(int i, int j){
+    public void RevealTile(int i, int j){
         //should be valid since we check earlier that it is valid
         Tile tile = TryAccess(i,j).get();
         tile.is_hidden = false;
