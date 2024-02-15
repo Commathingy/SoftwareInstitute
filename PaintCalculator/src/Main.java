@@ -87,7 +87,7 @@ public class Main {
 
     private static void add_section(boolean is_positive, Stack<WallSection> sections, Stack<WallSection> redo_queue, Scanner reader){
         System.out.print("You have chosen to " + ((is_positive) ? "add" : "remove") + " a section of wall. ");
-        System.out.println("If this is incorrect, or you want to go back, type back and press the enter key");
+        System.out.println("If this is incorrect, or if you want to go back, type back and press the enter key");
 
         System.out.println("Please choose the shape of the wall section by writing its name or number and pressing the enter key.");
         System.out.println("For more information about a particular shape, type \"help name-of-shape\" without the quotation marks and press the enter key");
