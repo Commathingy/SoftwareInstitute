@@ -13,29 +13,27 @@ public class Tile {
         this.is_mine = is_mine;
     }
 
-    public char AsciiDisplay(){
-        if (is_flagged) {return 'F';}
-        if (is_hidden) {return '#';}
-        if (is_mine) {return 'M';}
-        //mine neighbours should never be above 8
-        //and we should be in the case where the tile has been revealed and assigned a value
-        //or it was a mine
-        return (char) (mine_neighbours.get().intValue() + '0');
-    }
-
 
     public void draw(Graphics2D g2d, int i, int j){
         int position_x = i * 30;
         int position_y = j * 30;
 
+        //todo: add cases for a crossed flag and a red mine?
+        //red mine goes as a flag for draw_mine
+        //crossed flag is bool for flagged?
         if (is_hidden && is_flagged){
             DrawShapes.draw_flagged(g2d, position_x, position_y);
         } else if (is_hidden && is_held) {
-            DrawShapes.draw_depressed(g2d, position_x, position_y);
+            DrawShapes.draw_revealed(g2d, position_x, position_y);
         } else if (is_hidden) {
             DrawShapes.draw_hidden(g2d, position_x, position_y);
+        } else if (is_mine) {
+            DrawShapes.draw_mine(g2d, position_x, position_y);
+        } else if (mine_neighbours.isPresent() && mine_neighbours.get()>0) {
+            DrawShapes.draw_number(g2d, position_x, position_y, mine_neighbours.get());
+        } else {
+            DrawShapes.draw_revealed(g2d, position_x, position_y);
         }
-        //todo: addd the other cases (ones for revealed tiles)
     }
 }
 
@@ -60,23 +58,22 @@ class DrawShapes{
         draw_hidden(g2d, posx, posy);
         //Todo: draw flag
     }
-    static void draw_depressed(Graphics2D g2d, int posx, int posy){
-        Rectangle2D.Float rect = new Rectangle2D.Float(posx, posy, 30, 30);
-        g2d.setColor(new Color(100, 100, 100));
-        g2d.fill(rect);
-    }
+
     static void draw_revealed(Graphics2D g2d, int posx, int posy){
-        //for a revealed tile
-
-
         Rectangle2D.Float main_rect = new Rectangle2D.Float(posx, posy, 30, 30);
         g2d.setColor(new Color(100, 100, 100));
         g2d.fill(main_rect);
         g2d.setColor(new Color(50, 50, 50));
         g2d.drawLine(posx, posy, posx + 30, posy);
         g2d.drawLine(posx, posy, posx, posy + 30);
+    }
+    static void draw_number(Graphics2D g2d, int posx, int posy, int mines){
+        //todo: make this properly center
+        g2d.setColor(Color.RED);
+        g2d.drawString(Integer.toString(mines), posx + 5, posy + 25);
+    }
 
-
+    static void draw_mine(Graphics2D g2d, int posx, int posy){
         //Todo: also draw mines and numbers
         //todo: make a clicked mine red
         //todo: at end, cross flags that are wrong

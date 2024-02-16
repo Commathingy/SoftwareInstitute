@@ -16,6 +16,19 @@ public class MineBoard extends JComponent {
     private Optional<Integer> last_held = Optional.empty();
 
 
+    public void mine_locs(){
+        int i = 0;
+        for (Tile tile : tiles){
+            if (tile.is_mine){
+                System.out.println(i);
+            }
+            i++;
+        }
+    }
+
+
+
+
     private void ResetTiles(){
         tiles.clear();
 
@@ -26,7 +39,7 @@ public class MineBoard extends JComponent {
             //chance to spawn mine tile is left_to_spawn/i
             //since i = number of tiles left to create
             //only have is_mine true if left_to_spawn is actually above 0 still
-            boolean is_mine = Math.random() < ((float) left_to_spawn / (float) i) || (left_to_spawn > 0);
+            boolean is_mine = Math.random() < ((float) left_to_spawn / (float) i) && (left_to_spawn > 0);
             left_to_spawn -= is_mine ? 1 : 0;
             tiles.add(new Tile(is_mine));
         }
@@ -69,18 +82,6 @@ public class MineBoard extends JComponent {
         last_held = Optional.of(pos[0] + pos[1] * width);
         tiles.get(last_held.get()).is_held = true;
         repaint();
-    }
-
-    public String DisplayBoard(){
-        StringBuilder builder = new StringBuilder(width*height);
-        //j is a row, i is a column
-        for (int j = 0; j<height; j++){
-            for (int i = 0; i<width; i++){
-                builder.append(tiles.get(width * j + i).AsciiDisplay());
-            }
-            builder.append('\n');
-        }
-        return builder.toString();
     }
 
     public Optional<Tile> TryAccess(int i, int j){
@@ -140,8 +141,13 @@ public class MineBoard extends JComponent {
     protected void paintComponent(Graphics g){
         Graphics2D g2d = (Graphics2D) g;
 
+
+
         //draw the top bar
         //TODO
+
+        //Todo: change this font to a better one
+        g2d.setFont(new Font("Serif", Font.ITALIC, 36));
 
         //draw the tiles
         for (int j = 0; j<height; j++){
