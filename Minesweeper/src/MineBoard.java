@@ -57,12 +57,16 @@ public class MineBoard extends JComponent {
 
     private void ReleaseMouse(MouseEvent e){
 
-        if (IsReset(e) && reset_held) {
-            reset_held = false;
-            //todo: reset stuff
+        if (!(e.getButton() == MouseEvent.BUTTON1)){
+            //we don't ever care about releasing a m2
+            return;
         }
 
-        //todo: watch out for release m2 and m1
+        if (IsReset(e) && reset_held) {
+            reset_held = false;
+            ResetTiles();
+        }
+
         if (last_held.isPresent()){
             //stop pressing the last held
             tiles.get(last_held.get().ToIndex(width)).is_held = false;
@@ -74,7 +78,7 @@ public class MineBoard extends JComponent {
             //check if release is in same place as press
             if (pos.ToIndex(width) == last_held.get().ToIndex(width)){
                 //if so do the reveal logic
-                CascadeFrom(pos);
+                StartCascade(pos);
             }
             last_held = Optional.empty();
         }
@@ -99,7 +103,8 @@ public class MineBoard extends JComponent {
                 last_held = Optional.of(pos);
                 tile.get().is_held = true;
             }
-        } else if (e.getButton() == MouseEvent.BUTTON3){
+        } else if (e.getButton() == MouseEvent.BUTTON3 && last_held.isEmpty()){
+            //we check for empty last held since m1 has precedence over m2
             Optional<Tile> op_tile = TryAccess(pos);
             //check if the tile is still hidden
             if (op_tile.isPresent() && op_tile.get().is_hidden){
@@ -124,35 +129,93 @@ public class MineBoard extends JComponent {
         return (pos.i>=0 && pos.i<width && pos.j>=0 && pos.j<height);
     }
 
-    private void CascadeFrom(BoardCoord pos){
-        //todo: if the tile is already revealed, but number of adjacent of flags is equal to number, then cascade
+    private void HitMine(){
+        int i = 0;
+        for (Tile tile : tiles){
+            tile.is_hidden = false;
 
-
-        Optional<Tile> tile = TryAccess(pos);
-        //only reveal if the tile is not flagged or already revealed
-        if (tile.isPresent() && tile.get().is_hidden && !tile.get().is_flagged) {
-            //first check the number of neighbouring mines
             int mine_neighbours = 0;
-            for (int delj = -1; delj<2; delj++){
-                for (int deli = -1; deli<2; deli++){
-                    Optional<Tile> neighbour = TryAccess(BoardCoord.FromCoord(pos.i+deli, pos.j+delj));
-                    if (neighbour.isPresent()){
+            BoardCoord coord = BoardCoord.FromIndex(i, width);
+            for (int delj = -1; delj < 2; delj++) {
+                for (int deli = -1; deli < 2; deli++) {
+
+                    Optional<Tile> neighbour = TryAccess(BoardCoord.FromCoord(coord.i + deli, coord.j + delj));
+                    if (neighbour.isPresent()) {
                         mine_neighbours += neighbour.get().is_mine ? 1 : 0;
                     }
                 }
             }
-            tile.get().mine_neighbours = Optional.of(mine_neighbours);
-            tile.get().is_hidden = false;
-            if (mine_neighbours == 0){
-                //now cascade is there were no mine neighbours
-                for (int deli=-1; deli<2; deli++){
-                    for (int delj=-1; delj<2; delj++){
-                        if (deli == 0 && delj ==0) {continue;}
-                        CascadeFrom(BoardCoord.FromCoord(pos.i+deli, pos.j+delj));
+            tile.mine_neighbours = Optional.of(mine_neighbours);
+            i++;
+        }
+    }
+
+    private void StartCascade(BoardCoord pos){
+        Optional<Tile> tile = TryAccess(pos);
+        //we start a cascade if the tile is hidden and a 0
+        //or if it is revealed, and the number of flags around it is equal to the number of mines around it
+        if (tile.isPresent() && !tile.get().is_flagged){
+            if (tile.get().is_hidden){
+                CascadeFrom(pos);
+                return;
+            }
+            //calculate number of flags around
+            int flag_neighbours = 0;
+            for (int delj = -1; delj<2; delj++){
+                for (int deli = -1; deli<2; deli++){
+                    Optional<Tile> neighbour = TryAccess(BoardCoord.FromCoord(pos.i+deli, pos.j+delj));
+                    if (neighbour.isPresent()){
+                        flag_neighbours += neighbour.get().is_flagged ? 1 : 0;
                     }
                 }
             }
+            if (tile.get().mine_neighbours.isPresent() && flag_neighbours >= tile.get().mine_neighbours.get()){
+                for (int deli = -1; deli < 2; deli++) {
+                    for (int delj = -1; delj < 2; delj++) {
+                        if (deli == 0 && delj == 0) {
+                            continue;
+                        }
+                        CascadeFrom(BoardCoord.FromCoord(pos.i + deli, pos.j + delj));
+                    }
+                }
+            }
+        }
+    }
 
+    private void CascadeFrom(BoardCoord pos){
+        Optional<Tile> op_tile = TryAccess(pos);
+        if (op_tile.isPresent() && !op_tile.get().is_flagged && op_tile.get().is_hidden){
+            Tile tile = op_tile.get();
+
+            if (tile.is_mine){
+                tile.hit = true;
+                HitMine();
+                return;
+            }
+
+            tile.is_hidden = false;
+            //first check the number of neighbouring mines
+            int mine_neighbours = 0;
+            for (int delj = -1; delj < 2; delj++) {
+                for (int deli = -1; deli < 2; deli++) {
+                    Optional<Tile> neighbour = TryAccess(BoardCoord.FromCoord(pos.i + deli, pos.j + delj));
+                    if (neighbour.isPresent()) {
+                        mine_neighbours += neighbour.get().is_mine ? 1 : 0;
+                    }
+                }
+            }
+            tile.mine_neighbours = Optional.of(mine_neighbours);
+            if (mine_neighbours == 0) {
+                //now cascade is there were no mine neighbours
+                for (int deli = -1; deli < 2; deli++) {
+                    for (int delj = -1; delj < 2; delj++) {
+                        if (deli == 0 && delj == 0) {
+                            continue;
+                        }
+                        CascadeFrom(BoardCoord.FromCoord(pos.i + deli, pos.j + delj));
+                    }
+                }
+            }
         }
     }
 
