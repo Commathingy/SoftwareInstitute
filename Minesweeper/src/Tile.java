@@ -1,4 +1,5 @@
 import java.awt.*;
+import java.awt.geom.Ellipse2D;
 import java.awt.geom.Rectangle2D;
 import java.util.Optional;
 
@@ -27,6 +28,8 @@ public class Tile {
             DrawShapes.draw_revealed(g2d, position_x, position_y);
         } else if (is_hidden) {
             DrawShapes.draw_hidden(g2d, position_x, position_y);
+        } else if (is_flagged && !is_mine){ //this case should only happen at the very end when we force reveal tiles
+            //todo: draw the crossed flag
         } else if (is_mine) {
             DrawShapes.draw_mine(g2d, position_x, position_y);
         } else if (mine_neighbours.isPresent() && mine_neighbours.get()>0) {
@@ -57,6 +60,8 @@ class DrawShapes{
     static void draw_flagged(Graphics2D g2d, int posx, int posy){
         draw_hidden(g2d, posx, posy);
         //Todo: draw flag
+        g2d.setColor(Color.BLUE);
+        g2d.drawLine(posx, posy, posx+30, posy+30);
     }
 
     static void draw_revealed(Graphics2D g2d, int posx, int posy){
@@ -69,12 +74,17 @@ class DrawShapes{
     }
     static void draw_number(Graphics2D g2d, int posx, int posy, int mines){
         //todo: make this properly center
+        draw_revealed(g2d, posx, posy);
         g2d.setColor(Color.RED);
         g2d.drawString(Integer.toString(mines), posx + 5, posy + 25);
     }
 
     static void draw_mine(Graphics2D g2d, int posx, int posy){
-        //Todo: also draw mines and numbers
+        draw_revealed(g2d, posx, posy);
+        Ellipse2D.Float circle = new Ellipse2D.Float(posx+5, posy+5, 20, 20);
+        g2d.setColor(Color.BLACK);
+        //todo: improve mine graphic
+        g2d.fill(circle);
         //todo: make a clicked mine red
         //todo: at end, cross flags that are wrong
     }

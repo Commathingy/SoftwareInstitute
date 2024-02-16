@@ -7,8 +7,6 @@ public class Main {
 
         MineBoard board = new MineBoard();
 
-        board.mine_locs();
-
 
         //set up the JFrame (window)
         JFrame frame = new JFrame();

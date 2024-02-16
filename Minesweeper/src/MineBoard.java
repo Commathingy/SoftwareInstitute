@@ -3,33 +3,25 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.awt.geom.Ellipse2D;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.Optional;
 
 public class MineBoard extends JComponent {
     private ArrayList<Tile> tiles;
-    private final int width;
-    private final int height;
-    private final int num_mines;
+    private int width;
+    private int window_width;
+    private int height;
+    private int num_mines;
+    private int unflagged;
 
-    private Optional<Integer> last_held = Optional.empty();
+    private boolean reset_held = false;
 
-
-    public void mine_locs(){
-        int i = 0;
-        for (Tile tile : tiles){
-            if (tile.is_mine){
-                System.out.println(i);
-            }
-            i++;
-        }
-    }
-
-
-
+    private Optional<BoardCoord> last_held = Optional.empty();
 
     private void ResetTiles(){
+        unflagged = num_mines;
         tiles.clear();
 
         //spawn mines using reservoir method
@@ -50,68 +42,117 @@ public class MineBoard extends JComponent {
     }
 
 
-    private int[] ScreenToTile(MouseEvent e){
-        //todo: account for top bar
+    private BoardCoord ScreenToTile(MouseEvent e){
         int i = e.getX() / 30;
-        int j = e.getY() / 30;
-        return new int[]{i, j};
+        int j = (e.getY() / 30) - 2;
+        return BoardCoord.FromCoord(i,j);
+    }
+
+    private boolean IsReset(MouseEvent e){
+        int x = e.getX();
+        int y = e.getY();
+
+        return y>15 && y<45 && x<window_width/2 + 15 && x>window_width/2 - 15;
     }
 
     private void ReleaseMouse(MouseEvent e){
+
+        if (IsReset(e) && reset_held) {
+            reset_held = false;
+            //todo: reset stuff
+        }
+
+        //todo: watch out for release m2 and m1
         if (last_held.isPresent()){
             //stop pressing the last held
-            tiles.get(last_held.get()).is_held = false;
+            tiles.get(last_held.get().ToIndex(width)).is_held = false;
 
             //get position of the release
-            int[] pos = ScreenToTile(e);
-            int index = pos[0] + pos[1] * width;
+
+            BoardCoord pos = ScreenToTile(e);
 
             //check if release is in same place as press
-            if (index == last_held.get()){
+            if (pos.ToIndex(width) == last_held.get().ToIndex(width)){
                 //if so do the reveal logic
-                Optional<Tile> tile = TryAccess(pos[0], pos[1]);
-                if (tile.isPresent() && tile.get().is_hidden && !tile.get().is_flagged) {
-                    RevealTile(pos[0], pos[1]);
-                }
+                CascadeFrom(pos);
             }
+            last_held = Optional.empty();
         }
         repaint();
     }
     private void PressMouse(MouseEvent e){
-        int[] pos = ScreenToTile(e);
-        last_held = Optional.of(pos[0] + pos[1] * width);
-        tiles.get(last_held.get()).is_held = true;
+
+        //in this case we pressed the reset button
+        if (e.getButton() == MouseEvent.BUTTON1) {
+            if (IsReset(e)) {
+                reset_held = true;
+            }
+        }
+
+
+        BoardCoord pos = ScreenToTile(e);
+
+        //check for left or right click
+        if (e.getButton() == MouseEvent.BUTTON1){
+            Optional<Tile> tile = TryAccess(pos);
+            if (tile.isPresent()){
+                last_held = Optional.of(pos);
+                tile.get().is_held = true;
+            }
+        } else if (e.getButton() == MouseEvent.BUTTON3){
+            Optional<Tile> op_tile = TryAccess(pos);
+            //check if the tile is still hidden
+            if (op_tile.isPresent() && op_tile.get().is_hidden){
+                //flip the flagged status
+                op_tile.get().is_flagged ^= true;
+                unflagged -= op_tile.get().is_flagged ? 1 : -1;
+            }
+        }
+
         repaint();
     }
 
-    public Optional<Tile> TryAccess(int i, int j){
-        if (!isValidCoord(i, j)) {
+    public Optional<Tile> TryAccess(BoardCoord pos){
+        if (!isValidCoord(pos)) {
             return Optional.empty();
         } else {
-            return Optional.of(tiles.get(width * j + i));
+            return Optional.of(tiles.get(width * pos.j + pos.i));
         }
     }
 
-    public boolean isValidCoord(int i, int j){
-        return (i>=0 && i<width && j>=0 && j<height);
+    public boolean isValidCoord(BoardCoord pos){
+        return (pos.i>=0 && pos.i<width && pos.j>=0 && pos.j<height);
     }
 
-    public void RevealTile(int i, int j){
-        //TODO: do cascading
-        //should be valid since we check earlier that it is valid
-        Tile tile = TryAccess(i,j).get();
-        tile.is_hidden = false;
-        int mine_neighbours = 0;
-        if (!tile.is_mine){
+    private void CascadeFrom(BoardCoord pos){
+        //todo: if the tile is already revealed, but number of adjacent of flags is equal to number, then cascade
+
+
+        Optional<Tile> tile = TryAccess(pos);
+        //only reveal if the tile is not flagged or already revealed
+        if (tile.isPresent() && tile.get().is_hidden && !tile.get().is_flagged) {
+            //first check the number of neighbouring mines
+            int mine_neighbours = 0;
             for (int delj = -1; delj<2; delj++){
                 for (int deli = -1; deli<2; deli++){
-                    Optional<Tile> neighbour = TryAccess(i+deli, j+delj);
+                    Optional<Tile> neighbour = TryAccess(BoardCoord.FromCoord(pos.i+deli, pos.j+delj));
                     if (neighbour.isPresent()){
                         mine_neighbours += neighbour.get().is_mine ? 1 : 0;
                     }
                 }
             }
-            tile.mine_neighbours = Optional.of(mine_neighbours);
+            tile.get().mine_neighbours = Optional.of(mine_neighbours);
+            tile.get().is_hidden = false;
+            if (mine_neighbours == 0){
+                //now cascade is there were no mine neighbours
+                for (int deli=-1; deli<2; deli++){
+                    for (int delj=-1; delj<2; delj++){
+                        if (deli == 0 && delj ==0) {continue;}
+                        CascadeFrom(BoardCoord.FromCoord(pos.i+deli, pos.j+delj));
+                    }
+                }
+            }
+
         }
     }
 
@@ -122,7 +163,10 @@ public class MineBoard extends JComponent {
     public MineBoard(int width, int height, int num_mines) {
         this.num_mines = num_mines;
         this.width = width;
+        //todo: for small boards change
+        this.window_width = 30*width;
         this.height = height;
+        this.unflagged = num_mines;
         tiles = new ArrayList<>(width*height);
         this.ResetTiles();
 
@@ -136,25 +180,52 @@ public class MineBoard extends JComponent {
         });
     }
 
-
-
     protected void paintComponent(Graphics g){
         Graphics2D g2d = (Graphics2D) g;
 
-
-
         //draw the top bar
         //TODO
+        Ellipse2D.Float reset_button = new Ellipse2D.Float(window_width/2 - 15, 15, 30, 30);
+        g2d.setColor(Color.YELLOW);
+        g2d.fill(reset_button);
 
         //Todo: change this font to a better one
         g2d.setFont(new Font("Serif", Font.ITALIC, 36));
 
+        //translate downwards to start drawing tiles
+        g2d.translate(0, 60);
         //draw the tiles
         for (int j = 0; j<height; j++){
             for (int i = 0; i<width; i++){
                 //should be present since i and j are in valid range
-                TryAccess(i, j).get().draw(g2d, i, j);
+                TryAccess(BoardCoord.FromCoord(i, j)).get().draw(g2d, i, j);
             }
         }
     }
+}
+
+
+class BoardCoord{
+    public int i;
+    public int j;
+
+    public int ToIndex(int width){
+        return i + j * width;
+    }
+
+    private BoardCoord(int i, int j){
+        this.i = i;
+        this.j = j;
+    }
+
+    public static BoardCoord FromCoord(int i, int j){
+        return new BoardCoord(i,j);
+    }
+
+    public static BoardCoord FromIndex(int index, int width){
+        int i = index % width;
+        int j = index / width;
+        return new BoardCoord(i,j);
+    }
+
 }
