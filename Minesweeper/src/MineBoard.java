@@ -8,11 +8,11 @@ import java.util.ArrayList;
 import java.util.Optional;
 
 public class MineBoard extends JComponent {
-    private ArrayList<Tile> tiles;
-    private int width;
-    private int window_width;
-    private int height;
-    private int num_mines;
+    private final ArrayList<Tile> tiles;
+    public final int width;
+    private final int window_width;
+    public final int height;
+    private final int num_mines;
 
     /**
      * The number of un-flagged mines, equal to (num_mines - no. flagged tiles)
@@ -119,12 +119,11 @@ public class MineBoard extends JComponent {
                 return;
             }
         }
+
         //if we won, flag all hidden tiles
         if (game_won){
             for (Tile tile : tiles) {
-                if (tile.is_hidden){
-                    tile.is_flagged = true;
-                }
+                tile.is_flagged |= tile.is_hidden;
             }
         }
 
@@ -149,8 +148,8 @@ public class MineBoard extends JComponent {
      * @return A <code>BoardCoord</code> that corresponds to this position
      */
     private BoardCoord ScreenToTile(MouseEvent e){
-        int i = e.getX() / 30;
-        int j = (e.getY() / 30) - 2;
+        int i = (e.getX() - 25) / 30;
+        int j = (e.getY() - 105) / 30;
         return BoardCoord.FromCoord(i,j);
     }
 
@@ -163,7 +162,7 @@ public class MineBoard extends JComponent {
         }
 
         //check for pressing reset
-        if (e.getY()>15 && e.getY()<45 && e.getX()<window_width/2 + 15 && e.getX()>window_width/2 - 15 && reset_held) {
+        if (e.getY()>35 && e.getY()<65 && e.getX()<window_width/2 + 40 && e.getX()>window_width/2 + 10 && reset_held) {
             reset_held = false;
             ResetTiles();
         }
@@ -201,14 +200,14 @@ public class MineBoard extends JComponent {
 
         //in this case we pressed the reset button
         if (e.getButton() == MouseEvent.BUTTON1) {
-            if (e.getY()>15 && e.getY()<45 && e.getX()<window_width/2 + 15 && e.getX()>window_width/2 - 15) {
+            if (e.getY()>35 && e.getY()<65 && e.getX()<window_width/2 + 40 && e.getX()>window_width/2 + 10) {
                 reset_held = true;
                 return;
             }
         }
 
         //check for pressing settings
-        if (e.getY()>15 && e.getY()<45 && e.getX()<window_width - 20 && e.getX()>window_width - 50) {
+        if (e.getY()>35 && e.getY()<65 && e.getX()<window_width + 5 && e.getX()>window_width - 25) {
             Component container = SwingUtilities.getWindowAncestor(this);
             container.setVisible(false);
             Main.run_once((JFrame) container);
@@ -380,29 +379,35 @@ public class MineBoard extends JComponent {
     protected void paintComponent(Graphics g){
         Graphics2D g2d = (Graphics2D) g;
 
+        //draw the shading
+        DrawTools.DrawShadedRegion(0, 0, window_width + 50, height*30 + 130, 5, false, g2d);
+        DrawTools.DrawShadedRegion(20, 20, window_width + 10, 65, 5, true, g2d);
+        DrawTools.DrawShadedRegion(20, 100, window_width + 10, height*30 + 10, 5, true, g2d);
+
+        g2d.translate(0, 20);
         //draw reset button
-        Ellipse2D.Float reset_button = new Ellipse2D.Float(window_width/2 - 15, 15, 30, 30);
+        Ellipse2D.Float reset_button = new Ellipse2D.Float(window_width/2 + 10, 15, 30, 30);
         g2d.setColor(Color.YELLOW);
         g2d.fill(reset_button);
 
         //draw settings button
-        Ellipse2D.Float settings_button = new Ellipse2D.Float(window_width - 50, 15, 30, 30);
+        Ellipse2D.Float settings_button = new Ellipse2D.Float(window_width - 25, 15, 30, 30);
         g2d.setColor(Color.DARK_GRAY);
         g2d.fill(settings_button);
 
         //draw the mine counter
         g2d.setFont(new Font("SansSerif", Font.BOLD, 30));
         g2d.setColor(Color.BLACK);
-        g2d.drawString(Integer.toString(unflagged), 55, 41);
-        g2d.drawImage(draw_info.mine_sprite, 20, 20, null);
+        g2d.drawString(Integer.toString(unflagged), 75, 41);
+        g2d.drawImage(draw_info.mine_sprite, 40, 20, null);
 
         //translate downwards to start drawing tiles
-        g2d.translate(0, 60);
+        g2d.translate(25, 85);
         //draw the tiles
         for (int j = 0; j<height; j++){
             for (int i = 0; i<width; i++){
                 //should be present since i and j are in valid range
-                TryAccess(BoardCoord.FromCoord(i, j)).get().draw(g2d, i, j, draw_info);
+                tiles.get(BoardCoord.FromCoord(i, j).ToIndex(width)).draw(g2d, i, j, draw_info);
             }
         }
     }
@@ -441,7 +446,7 @@ class BoardCoord{
     }
 
     /**
-     * Converts from a index for a list to a 2D coordinate
+     * Converts from an index for a list to a 2D coordinate
      * @param index The index in the list for the tile
      * @param width The width of the board this coordinate corresponds to
      * @return The coordinate corresponding to the given index

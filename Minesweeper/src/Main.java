@@ -8,10 +8,7 @@ public class Main {
     //todo: add number next to sliders
     //todo: settings button and reset button sprites
 
-    public static void run_once(JFrame frame){
-        //clear any previous stuff
-        frame.getContentPane().removeAll();
-
+    public static MineBoard InputOptions(){
         //dialog to get dimensions
         JSlider width = new JSlider(10, 50, 20);
         JSlider height = new JSlider(5, 30, 10);
@@ -57,11 +54,20 @@ public class Main {
         Object[] fields = {"Width", width, "Height", height, "Mine %", mines};
         JOptionPane.showConfirmDialog(null, fields, "Please choose your desired settings", JOptionPane.DEFAULT_OPTION);
 
+        return new MineBoard(chosen_width[0], chosen_height[0], chosen_mines[0]*chosen_width[0]*chosen_height[0] / 100);
+    }
+
+    public static void run_once(JFrame frame){
+        //clear any previous stuff
+        frame.getContentPane().removeAll();
+
+
+
         //create the board
-        MineBoard board = new MineBoard(chosen_width[0], chosen_height[0], chosen_mines[0]*chosen_width[0]*chosen_height[0] / 100);
+        MineBoard board = InputOptions();
 
         //set up the frame
-        frame.setSize(chosen_width[0]*30 + 15, 99 + chosen_height[0]*30);
+        frame.setSize(board.width*30 + 66, 169 + board.height*30);
         frame.add(board);
         frame.setVisible(true);
     }
