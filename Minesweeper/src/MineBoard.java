@@ -1,10 +1,13 @@
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.geom.Ellipse2D;
-import java.awt.geom.Rectangle2D;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Optional;
 
@@ -15,6 +18,8 @@ public class MineBoard extends JComponent {
     private int height;
     private int num_mines;
     private int unflagged;
+
+    private DrawInfo draw_info;
 
     private boolean reset_held = false;
 
@@ -36,9 +41,7 @@ public class MineBoard extends JComponent {
             tiles.add(new Tile(is_mine));
         }
 
-
-        //Todo: proper error
-        if (left_to_spawn > 0) {throw new RuntimeException();}
+        if (left_to_spawn > 0) {throw new RuntimeException("Error: Failed to spawn all mines");}
     }
 
 
@@ -48,24 +51,23 @@ public class MineBoard extends JComponent {
         return BoardCoord.FromCoord(i,j);
     }
 
-    private boolean IsReset(MouseEvent e){
-        int x = e.getX();
-        int y = e.getY();
-
-        return y>15 && y<45 && x<window_width/2 + 15 && x>window_width/2 - 15;
-    }
 
     private void ReleaseMouse(MouseEvent e){
 
+        //check if button 1 was pressed
         if (!(e.getButton() == MouseEvent.BUTTON1)){
-            //we don't ever care about releasing a m2
+            //if not pressed just early return
             return;
         }
 
-        if (IsReset(e) && reset_held) {
+        //check for pressing reset
+        if (e.getY()>15 && e.getY()<45 && e.getX()<window_width/2 + 15 && e.getX()>window_width/2 - 15 && reset_held) {
             reset_held = false;
             ResetTiles();
         }
+
+        //check for pressing settings
+        //todo
 
         if (last_held.isPresent()){
             //stop pressing the last held
@@ -88,7 +90,7 @@ public class MineBoard extends JComponent {
 
         //in this case we pressed the reset button
         if (e.getButton() == MouseEvent.BUTTON1) {
-            if (IsReset(e)) {
+            if (e.getY()>15 && e.getY()<45 && e.getX()<window_width/2 + 15 && e.getX()>window_width/2 - 15) {
                 reset_held = true;
             }
         }
@@ -219,14 +221,16 @@ public class MineBoard extends JComponent {
         }
     }
 
+    /// Create a standard size board, 20x10 with 20 mines
     public MineBoard() {
         this(20, 10, 20);
     }
 
+    /// Create a board with a custom size and number of mines
     public MineBoard(int width, int height, int num_mines) {
+        this.draw_info = new DrawInfo();
         this.num_mines = num_mines;
         this.width = width;
-        //todo: for small boards change
         this.window_width = 30*width;
         this.height = height;
         this.unflagged = num_mines;
@@ -246,14 +250,16 @@ public class MineBoard extends JComponent {
     protected void paintComponent(Graphics g){
         Graphics2D g2d = (Graphics2D) g;
 
-        //draw the top bar
-        //TODO
+        //draw reset button
         Ellipse2D.Float reset_button = new Ellipse2D.Float(window_width/2 - 15, 15, 30, 30);
         g2d.setColor(Color.YELLOW);
         g2d.fill(reset_button);
 
-        //Todo: change this font to a better one
-        g2d.setFont(new Font("Serif", Font.ITALIC, 36));
+        //draw the mine counter
+        g2d.setFont(new Font("SansSerif", Font.BOLD, 30));
+        g2d.setColor(Color.BLACK);
+        g2d.drawString(Integer.toString(unflagged), 55, 41);
+        g2d.drawImage(draw_info.mine_sprite, 20, 20, null);
 
         //translate downwards to start drawing tiles
         g2d.translate(0, 60);
@@ -261,7 +267,7 @@ public class MineBoard extends JComponent {
         for (int j = 0; j<height; j++){
             for (int i = 0; i<width; i++){
                 //should be present since i and j are in valid range
-                TryAccess(BoardCoord.FromCoord(i, j)).get().draw(g2d, i, j);
+                TryAccess(BoardCoord.FromCoord(i, j)).get().draw(g2d, i, j, draw_info);
             }
         }
     }

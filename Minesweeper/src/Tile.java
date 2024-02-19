@@ -1,6 +1,7 @@
 import java.awt.*;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Rectangle2D;
+import java.awt.image.BufferedImage;
 import java.util.Optional;
 
 public class Tile {
@@ -16,23 +17,21 @@ public class Tile {
     }
 
 
-    public void draw(Graphics2D g2d, int i, int j){
+    public void draw(Graphics2D g2d, int i, int j, DrawInfo draw_info){
         int position_x = i * 30;
         int position_y = j * 30;
 
-        //todo: add cases for a red mine?
-        //red mine goes as a flag for draw_mine
-        //crossed flag is bool for flagged?
         if (is_hidden && is_flagged){
-            DrawShapes.draw_flagged(g2d, position_x, position_y);
+            DrawShapes.draw_flagged(g2d, position_x, position_y, draw_info.flag_sprite);
         } else if (is_hidden && is_held) {
             DrawShapes.draw_revealed(g2d, position_x, position_y);
         } else if (is_hidden) {
             DrawShapes.draw_hidden(g2d, position_x, position_y);
         } else if (is_flagged && !is_mine){ //this case should only happen at the very end when we force reveal tiles
             //todo: draw the crossed flag
+            //do as a input flag for the draw_flagged
         } else if (is_mine) {
-            DrawShapes.draw_mine(g2d, position_x, position_y, hit);
+            DrawShapes.draw_mine(g2d, position_x, position_y, draw_info.mine_sprite, hit);
         } else if (mine_neighbours.isPresent() && mine_neighbours.get()>0) {
             DrawShapes.draw_number(g2d, position_x, position_y, mine_neighbours.get());
         } else {
@@ -73,11 +72,9 @@ class DrawShapes{
         g2d.setColor(medium_colour);
         g2d.fill(main_rect);
     }
-    static void draw_flagged(Graphics2D g2d, int posx, int posy){
+    static void draw_flagged(Graphics2D g2d, int posx, int posy, BufferedImage flag_sprite){
         draw_hidden(g2d, posx, posy);
-        //Todo: draw flag
-        g2d.setColor(Color.BLUE);
-        g2d.drawLine(posx, posy, posx+30, posy+30);
+        g2d.drawImage(flag_sprite, posx + 5, posy + 5, null);
     }
 
     static void draw_revealed(Graphics2D g2d, int posx, int posy){
@@ -103,14 +100,12 @@ class DrawShapes{
             default -> Color.WHITE;
         };
         g2d.setColor(color);
-        g2d.drawString(Integer.toString(mines), posx + 5, posy + 25);
+        g2d.drawString(Integer.toString(mines), posx + 7, posy + 26);
     }
 
-    static void draw_mine(Graphics2D g2d, int posx, int posy, boolean hit){
+    static void draw_mine(Graphics2D g2d, int posx, int posy, BufferedImage mine_sprite, boolean hit){
         draw_revealed(g2d, posx, posy);
-        Ellipse2D.Float circle = new Ellipse2D.Float(posx+5, posy+5, 20, 20);
-        g2d.setColor(hit ? Color.RED : Color.BLACK);
-        //todo: improve mine graphic
-        g2d.fill(circle);
+        //g2d.setColor(hit ? Color.RED : Color.BLACK);
+        g2d.drawImage(mine_sprite, posx + 5, posy + 5, null);
     }
 }
