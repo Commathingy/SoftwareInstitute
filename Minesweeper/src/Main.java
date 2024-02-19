@@ -6,7 +6,8 @@ import java.util.Scanner;
 
 public class Main {
     //todo: add number next to sliders
-    
+    //todo: settings button and reset button sprites
+
     public static void run_once(JFrame frame){
         //clear any previous stuff
         frame.getContentPane().removeAll();

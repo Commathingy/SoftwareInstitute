@@ -1,13 +1,9 @@
 
-import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.geom.Ellipse2D;
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Optional;
 
@@ -17,23 +13,70 @@ public class MineBoard extends JComponent {
     private int window_width;
     private int height;
     private int num_mines;
+
+    /**
+     * The number of un-flagged mines, equal to (num_mines - no. flagged tiles)
+     */
     private int unflagged;
 
-
-    //0 -> playing
-    //1 -> won
-    //2 -> lost
-    private int game_state = 0;
-
-
+    /**
+     * Flag indicating if the current move is the first
+     */
     private boolean first_flip = true;
 
-    private DrawInfo draw_info;
-
+    /**
+     * stores the buffered images of the mine and flag
+     */
+    private final DrawInfo draw_info;
+    
+    /**
+     * indicates whether the rest button is currently being held
+     */
     private boolean reset_held = false;
-
+    
+    /**
+     * The coordinate of the last pressed tile, if there is one
+     */
     private Optional<BoardCoord> last_held = Optional.empty();
 
+
+    /**
+     * Create a standard size board, 20x10 with 20 mines
+     */
+    public MineBoard() {
+        this(20, 10, 20);
+    }
+
+    /**
+     * Create a board with a custom size and number of mines
+     */
+    public MineBoard(int width, int height, int num_mines) {
+        this.draw_info = new DrawInfo();
+        this.num_mines = num_mines;
+        this.width = width;
+        this.window_width = 30*width;
+        this.height = height;
+        this.unflagged = num_mines;
+        tiles = new ArrayList<>(width*height);
+        for (int i = 0; i<width*height; i++){
+            tiles.add(new Tile(false));
+        }
+        this.ResetTiles();
+
+        //add the mouse listener
+        addMouseListener(new MouseListener() {
+            public void mouseClicked(MouseEvent e) {}
+            public void mousePressed(MouseEvent e) {PressMouse(e);}
+            public void mouseReleased(MouseEvent e) {ReleaseMouse(e);}
+            public void mouseEntered(MouseEvent e) {}
+            public void mouseExited(MouseEvent e) {}
+        });
+    }
+
+    /**
+     * Moves the mines to be in different locations, but does not alter anything but the <code>is_mine</code>
+     * property of each tile, so should only be used in situation where this is expected
+     */
     private void ReplaceMines(){
         //spawn mines using reservoir method
         int left_to_spawn = num_mines;
@@ -51,6 +94,9 @@ public class MineBoard extends JComponent {
         if (left_to_spawn > 0) {throw new RuntimeException("Error: Failed to spawn all mines");}
     }
 
+    /**
+     * Resets the entire board, replacing the mines and resetting all relevant variables.
+     */
     private void ResetTiles(){
         unflagged = num_mines;
         first_flip = true;
@@ -73,7 +119,6 @@ public class MineBoard extends JComponent {
                 return;
             }
         }
-        game_state = game_won ? 1 : 2;
         //if we won, flag all hidden tiles
         if (game_won){
             for (Tile tile : tiles) {
@@ -88,7 +133,6 @@ public class MineBoard extends JComponent {
         int reply = JOptionPane.showConfirmDialog(null, new Object[]{"Try again?"}, outcome, JOptionPane.YES_NO_OPTION);
         if (reply == 0) {
             //yes was pressed, so reset
-            game_state = 0;
 
             ResetTiles();
         } else {
@@ -96,7 +140,14 @@ public class MineBoard extends JComponent {
         }
     }
 
-
+    /**
+     * Converts the coordinates of mouse event to a board coordinate.
+     * <p>
+     * If the events position was outside the board, this will result in an invalid <code>BoardCoord</code>
+     * </p>
+     * @param e The event containing position info
+     * @return A <code>BoardCoord</code> that corresponds to this position
+     */
     private BoardCoord ScreenToTile(MouseEvent e){
         int i = e.getX() / 30;
         int j = (e.getY() / 30) - 2;
@@ -188,7 +239,12 @@ public class MineBoard extends JComponent {
         repaint();
     }
 
-    public Optional<Tile> TryAccess(BoardCoord pos){
+    /**
+     * Get the tile from the board with the given coordinate, if it is valid
+     * @param pos The coordinate of the tile desired
+     * @return An optional value that contains the tile if the coordinate was valid, otherwise empty
+     */
+    private Optional<Tile> TryAccess(BoardCoord pos){
         if (!isValidCoord(pos)) {
             return Optional.empty();
         } else {
@@ -196,10 +252,20 @@ public class MineBoard extends JComponent {
         }
     }
 
-    public boolean isValidCoord(BoardCoord pos){
+    /**
+     * Returns true if the given coordinate is a valid coordinate on the board
+     * @param pos The coordinate to check
+     * @return <code>true</code> if coordinate is valid, <code>false</code> otherwise
+     */
+    private boolean isValidCoord(BoardCoord pos){
         return (pos.i>=0 && pos.i<width && pos.j>=0 && pos.j<height);
     }
 
+    /**
+     * Called when a tile with a mine is revealed by <code>CascadeFrom</code>.
+     * Sets all tiles except flagged tiles to be revealed and calculates the appropriate value
+     * for <code>mine_neighbours</code>
+     */
     private void HitMine(){
         int i = 0;
         for (Tile tile : tiles){
@@ -221,6 +287,16 @@ public class MineBoard extends JComponent {
         }
     }
 
+    /**
+     * Start a cascade from the current tile.
+     * <p>
+     * If a tile is hidden, start a cascade at the given position with <code>CascadeFrom</code>
+     * If the tile is already revealed and the number on it is less than or equal to the number of adjacent flags, it
+     * will call <code>CascadeFrom</code> on all the adjacent tiles
+     * </p>
+     *
+     * @param pos The position at which the cascade is beginning
+     */
     private void StartCascade(BoardCoord pos){
         Optional<Tile> tile = TryAccess(pos);
         //we start a cascade if the tile is hidden and a 0
@@ -240,6 +316,7 @@ public class MineBoard extends JComponent {
                     }
                 }
             }
+            //if there are at least as many flags as the number, cascade
             if (tile.get().mine_neighbours.isPresent() && flag_neighbours >= tile.get().mine_neighbours.get()){
                 for (int deli = -1; deli < 2; deli++) {
                     for (int delj = -1; delj < 2; delj++) {
@@ -253,6 +330,15 @@ public class MineBoard extends JComponent {
         }
     }
 
+    /**
+     * Cascading reveal of tiles on the board.
+     * <p>
+     * If the tile is hidden and not flagged, it will be revealed,
+     * and if it is a 0, it will reveal all the tiles next to it via this method.
+     * </p>
+     *
+     * @param pos The position of the tile the cascade is currently happening at
+     */
     private void CascadeFrom(BoardCoord pos){
         Optional<Tile> op_tile = TryAccess(pos);
         if (op_tile.isPresent() && !op_tile.get().is_flagged && op_tile.get().is_hidden){
@@ -290,34 +376,6 @@ public class MineBoard extends JComponent {
         }
     }
 
-    /// Create a standard size board, 20x10 with 20 mines
-    public MineBoard() {
-        this(20, 10, 20);
-    }
-
-    /// Create a board with a custom size and number of mines
-    public MineBoard(int width, int height, int num_mines) {
-        this.draw_info = new DrawInfo();
-        this.num_mines = num_mines;
-        this.width = width;
-        this.window_width = 30*width;
-        this.height = height;
-        this.unflagged = num_mines;
-        tiles = new ArrayList<>(width*height);
-        for (int i = 0; i<width*height; i++){
-            tiles.add(new Tile(false));
-        }
-        this.ResetTiles();
-
-        //add the mouse listener
-        addMouseListener(new MouseListener() {
-            public void mouseClicked(MouseEvent e) {}
-            public void mousePressed(MouseEvent e) {PressMouse(e);}
-            public void mouseReleased(MouseEvent e) {ReleaseMouse(e);}
-            public void mouseEntered(MouseEvent e) {}
-            public void mouseExited(MouseEvent e) {}
-        });
-    }
 
     protected void paintComponent(Graphics g){
         Graphics2D g2d = (Graphics2D) g;
@@ -355,19 +413,39 @@ class BoardCoord{
     public int i;
     public int j;
 
+    /**
+     * Converts this coordinate into the index in a list which corresponds to
+     * this coordinate for a board with the given width
+     * @param width The width of the board
+     * @return The index in a 1D list that corresponds to this coordinate
+     */
     public int ToIndex(int width){
         return i + j * width;
     }
 
+    /**
+     * @param i The horizontal position on the board
+     * @param j The vertical position on the board
+     */
     private BoardCoord(int i, int j){
         this.i = i;
         this.j = j;
     }
 
+    /**
+     * @param i The horizontal position on the board
+     * @param j The vertical position on the board
+     */
     public static BoardCoord FromCoord(int i, int j){
         return new BoardCoord(i,j);
     }
 
+    /**
+     * Converts from a index for a list to a 2D coordinate
+     * @param index The index in the list for the tile
+     * @param width The width of the board this coordinate corresponds to
+     * @return The coordinate corresponding to the given index
+     */
     public static BoardCoord FromIndex(int index, int width){
         int i = index % width;
         int j = index / width;

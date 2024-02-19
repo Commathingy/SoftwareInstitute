@@ -52,16 +52,16 @@ class DrawShapes{
     private static final Color dark_colour = new Color(128, 128, 128);
     private static final Color medium_colour = new Color(192, 192, 192);
     private static final Color light_colour = new Color(255, 255, 255);
-    private static final Color colour_1 = new Color(0, 0, 255);
-    private static final Color colour_2 = new Color(0, 128, 0);
-    private static final Color colour_3 = new Color(255, 0, 0);
-    private static final Color colour_4 = new Color(0, 0, 128);
-    private static final Color colour_5 = new Color(128, 0, 0);
-    private static final Color colour_6 = new Color(0, 128, 128);
-    private static final Color colour_7 = new Color(0, 0, 0);
-    private static final Color colour_8 = new Color(128, 0, 128);
-
-
+    private static final Color[] colours = new Color[]{
+            new Color(0, 0, 255),
+            new Color(0, 128, 0),
+            new Color(255, 0, 0),
+            new Color(0, 0, 128),
+            new Color(128, 0, 0),
+            new Color(0, 128, 128),
+            new Color(0, 0, 0),
+            new Color(128, 0, 128)
+    };
 
     static void draw_hidden(Graphics2D g2d, int posx, int posy){
         //bevel width
@@ -97,17 +97,7 @@ class DrawShapes{
     }
     static void draw_number(Graphics2D g2d, int posx, int posy, int mines){
         draw_revealed(g2d, posx, posy);
-        Color color = switch (mines){
-            case 1 -> colour_1;
-            case 2 -> colour_2;
-            case 3 -> colour_3;
-            case 4 -> colour_4;
-            case 5 -> colour_5;
-            case 6 -> colour_6;
-            case 7 -> colour_7;
-            case 8 -> colour_8;
-            default -> Color.WHITE;
-        };
+        Color color = colours[mines-1];
         g2d.setColor(color);
         g2d.drawString(Integer.toString(mines), posx + 7, posy + 26);
     }
