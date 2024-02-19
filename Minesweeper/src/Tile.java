@@ -16,20 +16,26 @@ public class Tile {
         this.is_mine = is_mine;
     }
 
-
+    public void ResetTile(){
+           this.hit = false;
+           this.is_held = false;
+           this.is_flagged = false;
+           this.is_hidden = true;
+           this.is_mine = false;
+           this.mine_neighbours = Optional.empty();
+    }
     public void draw(Graphics2D g2d, int i, int j, DrawInfo draw_info){
         int position_x = i * 30;
         int position_y = j * 30;
 
         if (is_hidden && is_flagged){
-            DrawShapes.draw_flagged(g2d, position_x, position_y, draw_info.flag_sprite);
+            DrawShapes.draw_flagged(g2d, position_x, position_y, draw_info.flag_sprite, false);
         } else if (is_hidden && is_held) {
             DrawShapes.draw_revealed(g2d, position_x, position_y);
         } else if (is_hidden) {
             DrawShapes.draw_hidden(g2d, position_x, position_y);
         } else if (is_flagged && !is_mine){ //this case should only happen at the very end when we force reveal tiles
-            //todo: draw the crossed flag
-            //do as a input flag for the draw_flagged
+            DrawShapes.draw_flagged(g2d, position_x, position_y, draw_info.flag_sprite, true);
         } else if (is_mine) {
             DrawShapes.draw_mine(g2d, position_x, position_y, draw_info.mine_sprite, hit);
         } else if (mine_neighbours.isPresent() && mine_neighbours.get()>0) {
@@ -72,9 +78,13 @@ class DrawShapes{
         g2d.setColor(medium_colour);
         g2d.fill(main_rect);
     }
-    static void draw_flagged(Graphics2D g2d, int posx, int posy, BufferedImage flag_sprite){
+    static void draw_flagged(Graphics2D g2d, int posx, int posy, BufferedImage flag_sprite, boolean crossed){
         draw_hidden(g2d, posx, posy);
         g2d.drawImage(flag_sprite, posx + 5, posy + 5, null);
+        if (crossed){
+            g2d.setColor(Color.RED);
+            g2d.drawLine(posx, posy, posx+30, posy+30);
+        }
     }
 
     static void draw_revealed(Graphics2D g2d, int posx, int posy){
@@ -86,7 +96,6 @@ class DrawShapes{
         g2d.drawLine(posx, posy, posx, posy + 30);
     }
     static void draw_number(Graphics2D g2d, int posx, int posy, int mines){
-        //todo: make this properly center
         draw_revealed(g2d, posx, posy);
         Color color = switch (mines){
             case 1 -> colour_1;
@@ -105,7 +114,11 @@ class DrawShapes{
 
     static void draw_mine(Graphics2D g2d, int posx, int posy, BufferedImage mine_sprite, boolean hit){
         draw_revealed(g2d, posx, posy);
-        //g2d.setColor(hit ? Color.RED : Color.BLACK);
+        if (hit) {
+            g2d.setColor(Color.RED);
+            Rectangle2D.Float main_rect = new Rectangle2D.Float(posx+1, posy+1, 29, 29);
+            g2d.fill(main_rect);
+        }
         g2d.drawImage(mine_sprite, posx + 5, posy + 5, null);
     }
 }

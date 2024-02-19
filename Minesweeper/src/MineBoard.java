@@ -19,29 +19,81 @@ public class MineBoard extends JComponent {
     private int num_mines;
     private int unflagged;
 
+
+    //0 -> playing
+    //1 -> won
+    //2 -> lost
+    private int game_state = 0;
+
+
+    private boolean first_flip = true;
+
     private DrawInfo draw_info;
 
     private boolean reset_held = false;
 
     private Optional<BoardCoord> last_held = Optional.empty();
 
-    private void ResetTiles(){
-        unflagged = num_mines;
-        tiles.clear();
-
+    private void ReplaceMines(){
         //spawn mines using reservoir method
         int left_to_spawn = num_mines;
-
-        for (int i=width*height; i>0; i--){
+        int i=width*height;
+        for (Tile tile : tiles){
             //chance to spawn mine tile is left_to_spawn/i
             //since i = number of tiles left to create
             //only have is_mine true if left_to_spawn is actually above 0 still
             boolean is_mine = Math.random() < ((float) left_to_spawn / (float) i) && (left_to_spawn > 0);
             left_to_spawn -= is_mine ? 1 : 0;
-            tiles.add(new Tile(is_mine));
+            tile.is_mine = is_mine;
+            i--;
         }
 
         if (left_to_spawn > 0) {throw new RuntimeException("Error: Failed to spawn all mines");}
+    }
+
+    private void ResetTiles(){
+        unflagged = num_mines;
+        first_flip = true;
+        for (Tile tile : tiles){
+            tile.ResetTile();
+        }
+        ReplaceMines();
+        repaint();
+    }
+
+    private void CheckGameEnd(){
+        boolean game_won = true;
+        for (Tile tile : tiles){
+            if (tile.hit) {
+                //hit a mine and so lost
+                game_won = false;
+            }
+            if (tile.is_hidden && !tile.is_mine){
+                //there is an uncleared non mine tile
+                return;
+            }
+        }
+        game_state = game_won ? 1 : 2;
+        //if we won, flag all hidden tiles
+        if (game_won){
+            for (Tile tile : tiles) {
+                if (tile.is_hidden){
+                    tile.is_flagged = true;
+                }
+            }
+        }
+
+        String outcome = game_won? "You Won!" : "You Lost";
+        this.paintComponent(getGraphics());
+        int reply = JOptionPane.showConfirmDialog(null, new Object[]{"Try again?"}, outcome, JOptionPane.YES_NO_OPTION);
+        if (reply == 0) {
+            //yes was pressed, so reset
+            game_state = 0;
+
+            ResetTiles();
+        } else {
+            SwingUtilities.getWindowAncestor(this).dispose();
+        }
     }
 
 
@@ -51,10 +103,9 @@ public class MineBoard extends JComponent {
         return BoardCoord.FromCoord(i,j);
     }
 
-
     private void ReleaseMouse(MouseEvent e){
 
-        //check if button 1 was pressed
+        //check if button 1 was released
         if (!(e.getButton() == MouseEvent.BUTTON1)){
             //if not pressed just early return
             return;
@@ -65,9 +116,6 @@ public class MineBoard extends JComponent {
             reset_held = false;
             ResetTiles();
         }
-
-        //check for pressing settings
-        //todo
 
         if (last_held.isPresent()){
             //stop pressing the last held
@@ -80,9 +128,21 @@ public class MineBoard extends JComponent {
             //check if release is in same place as press
             if (pos.ToIndex(width) == last_held.get().ToIndex(width)){
                 //if so do the reveal logic
+                //first check if this is first click and we should rearrange mines
+                if (first_flip){
+                    first_flip = false;
+                    Tile tile = tiles.get(pos.ToIndex(width));
+                    while (tile.is_mine){
+                        ReplaceMines();
+                    }
+                }
+
                 StartCascade(pos);
             }
             last_held = Optional.empty();
+
+            //this should be the only point when we could have already won
+            CheckGameEnd();
         }
         repaint();
     }
@@ -92,7 +152,16 @@ public class MineBoard extends JComponent {
         if (e.getButton() == MouseEvent.BUTTON1) {
             if (e.getY()>15 && e.getY()<45 && e.getX()<window_width/2 + 15 && e.getX()>window_width/2 - 15) {
                 reset_held = true;
+                return;
             }
+        }
+
+        //check for pressing settings
+        if (e.getY()>15 && e.getY()<45 && e.getX()<window_width - 20 && e.getX()>window_width - 50) {
+            Component container = SwingUtilities.getWindowAncestor(this);
+            container.setVisible(false);
+            Main.run_once((JFrame) container);
+            return;
         }
 
 
@@ -235,6 +304,9 @@ public class MineBoard extends JComponent {
         this.height = height;
         this.unflagged = num_mines;
         tiles = new ArrayList<>(width*height);
+        for (int i = 0; i<width*height; i++){
+            tiles.add(new Tile(false));
+        }
         this.ResetTiles();
 
         //add the mouse listener
@@ -254,6 +326,11 @@ public class MineBoard extends JComponent {
         Ellipse2D.Float reset_button = new Ellipse2D.Float(window_width/2 - 15, 15, 30, 30);
         g2d.setColor(Color.YELLOW);
         g2d.fill(reset_button);
+
+        //draw settings button
+        Ellipse2D.Float settings_button = new Ellipse2D.Float(window_width - 50, 15, 30, 30);
+        g2d.setColor(Color.DARK_GRAY);
+        g2d.fill(settings_button);
 
         //draw the mine counter
         g2d.setFont(new Font("SansSerif", Font.BOLD, 30));

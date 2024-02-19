@@ -5,13 +5,13 @@ import java.util.Optional;
 import java.util.Scanner;
 
 public class Main {
-
     //todo: add number next to sliders
-    //todo: make an edit options
-    //todo: finish off the tile sprites
+    
+    public static void run_once(JFrame frame){
+        //clear any previous stuff
+        frame.getContentPane().removeAll();
 
-    public static void main(String[] args) {
-
+        //dialog to get dimensions
         JSlider width = new JSlider(10, 50, 20);
         JSlider height = new JSlider(5, 30, 10);
         JSlider mines = new JSlider(5, 40, 20);
@@ -54,21 +54,21 @@ public class Main {
         });
 
         Object[] fields = {"Width", width, "Height", height, "Mine %", mines};
-        JOptionPane.showConfirmDialog(null, fields, "test", JOptionPane.DEFAULT_OPTION);
+        JOptionPane.showConfirmDialog(null, fields, "Please choose your desired settings", JOptionPane.DEFAULT_OPTION);
 
-
+        //create the board
         MineBoard board = new MineBoard(chosen_width[0], chosen_height[0], chosen_mines[0]*chosen_width[0]*chosen_height[0] / 100);
 
-        //set up the JFrame (window)
-        JFrame frame = new JFrame();
+        //set up the frame
         frame.setSize(chosen_width[0]*30 + 15, 99 + chosen_height[0]*30);
-        frame.setTitle("Minisweeper");
-        //TODO; is this necessary?
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setVisible(true);
-
-        //add the board to the window
         frame.add(board);
+        frame.setVisible(true);
+    }
 
+    public static void main(String[] args) {
+        JFrame frame = new JFrame();
+        frame.setTitle("Minesweeper");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        run_once(frame);
     }
 }
